@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
+
+
 namespace Client
 {
     internal class Program
@@ -37,6 +39,17 @@ namespace Client
 
                     await _client.ConnectAsync(new IPEndPoint(_address, _port.Value));
 
+                    _client.NoDelay = true;
+
+                    NetworkStream stream = _client.GetStream();
+
+                    var writeTask = Task.Run(() => WriteMessageAsync(stream));
+
+                    var readTask = Task.Run(() => ReadMessageAsync(stream));
+
+
+                    await Task.WhenAny(writeTask, readTask);
+
                 }
                 catch(Exception ex)
                 {
@@ -47,29 +60,36 @@ namespace Client
             {
                 Console.WriteLine("Invalid IP address or port.");
             }
-
-
-            while (true)
+        }
+        static async Task WriteMessageAsync(NetworkStream stream)
+        {
+            while(true)
             {
-                NetworkStream stream = _client!.GetStream();
 
+                string message = await Console.In.ReadLineAsync() ?? "";
 
-
-                Console.Write(">");
-
-                byte[] buffer = new byte[4096];
-
-                string message = Console.ReadLine() ?? "";
-
-                var data = Encoding.UTF8.GetBytes(message);
+                var data = Encoding.UTF8.GetBytes(message, 0, message.Length);
 
                 await stream.WriteAsync(data, 0, data.Length);
 
-                int bytesRead = await stream.ReadAsync(buffer);
+            }
+        }
 
-                var response = Encoding.UTF8.GetString(buffer);
+        static async Task ReadMessageAsync(NetworkStream stream)
+        {
+            byte[] buffer = new byte[4096];
+            while(true)
+            {
 
-                Console.WriteLine(response);
+                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                if (bytesRead == 0) break;
+
+
+                var server_response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                Console.WriteLine($"\n[Server] {Encoding.UTF8.GetString(buffer, 0, bytesRead)}");
+                Console.Write("> ");
 
             }
         }
