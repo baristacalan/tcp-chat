@@ -11,26 +11,30 @@ namespace Server
         static readonly int _port = 4040;
         static readonly IPAddress _ipAddress = IPAddress.Any;
         static readonly List<TcpClient> _clients = [];
+
+        static bool isRunning = false;
         
+        static readonly TcpListener listener = new(_ipAddress, _port);
         static async Task Main(string[] args)
         {
 
-            TcpListener listener = new(_ipAddress, _port);
             try
             {
                 listener.Start();
+                isRunning = true;
                 Console.WriteLine($"Server listening on {_ipAddress}:{_port}");
 
                 _= Task.Run(ServerCommandLoop);
                 while (true)
                 {
+                    if (!isRunning) break;
                     var client = await listener.AcceptTcpClientAsync();
                     lock(_clients) _clients.Add(client);
                     client.Client.NoDelay = true;
                     Console.WriteLine($"Connection Accepted: {client.Client.RemoteEndPoint}");
                     
 
-                    _ = Task.Run(() => HandleClientAsync(client));
+                    _ =Task.Run(() => HandleClientAsync(client));
 
                 }
             }
@@ -40,6 +44,7 @@ namespace Server
             }
             finally 
             { 
+                isRunning = false;
                 listener.Stop();
             
             }
@@ -57,7 +62,7 @@ namespace Server
             {
                 while (true)
                 {
-                    bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, CancellationToken.None);
 
                     string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
@@ -65,11 +70,13 @@ namespace Server
 
                     if (cmd.Equals("/exit", StringComparison.OrdinalIgnoreCase)) break;
 
-                    Console.WriteLine($"{bytesRead} bytes recieved from [{client.Client.RemoteEndPoint}]: {text}");
+                    //string userName = text.Split(":")[0];
 
+                    //Console.WriteLine(userName);
 
-                    await stream.WriteAsync(buffer ,0, buffer.Length);
-                    Console.WriteLine($"{bytesRead} bytes sent back to [{client.Client.RemoteEndPoint}]: {text}");
+                    Console.WriteLine($"{text}");
+
+                    await BroadcastAsync(buffer.AsSpan(0, bytesRead).ToArray(), client);
 
                 }
             }
@@ -89,30 +96,96 @@ namespace Server
             }
         }
 
-        private static async Task ServerCommandLoop()
+        private static void StopServer()
         {
-            while (true)
+            isRunning = false;
+            foreach (var c in _clients)
             {
-                Console.Write(">");
-                string command = await Console.In.ReadLineAsync() ?? "";
-
-                if (string.IsNullOrWhiteSpace(command)) continue;
-
-                byte[] data = Encoding.UTF8.GetBytes(command);
-
-                lock (_clients)
-                {
-                   foreach(var c in _clients.ToArray())
-                    {
-
-                        if(!c.Connected) continue;
-                        _= c.GetStream().WriteAsync(data, 0, data.Length);
-                        
-                    }
-
-                }
+                c.Close();
             }
+            _clients.Clear();
+
+            listener.Stop();
+
+        }
+        private static async Task SendAsync(TcpClient client, byte[] data, CancellationToken ct=default)
+        {
+
+            try
+            {
+                if (!client.Connected) return;
+                await client.GetStream().WriteAsync(data, 0, data.Length);
+            }
+            catch(Exception ex)
+            {
+                lock (_clients) _clients.Remove(client);
+                Console.WriteLine(ex.Message);
+            }
+
         }
 
+
+        private static async Task BroadcastAsync(byte[] data, TcpClient? exclude = null, CancellationToken ct = default)
+        {
+            List<TcpClient> snapshot;
+            lock (_clients) snapshot = _clients.ToList();
+
+            var tasks = snapshot.Where(c => c != exclude).Select(async c =>
+            {
+                try
+                {
+                    if (!c.Connected) return;
+                    await c.GetStream().WriteAsync(data, 0, data.Length, ct);
+                }
+                catch
+                {
+                    lock (_clients) _clients.Remove(c);
+                }
+            });
+
+            await Task.WhenAll(tasks);
+        }
+
+
+        private static async Task ServerCommandLoop()
+        {
+            byte[] buffer = new byte[4096];
+            while (true)
+            {
+                try
+                {
+
+                    Console.Write("> ");
+                    string command = await Console.In.ReadLineAsync() ?? "";
+                    string cmd = command.Trim();
+
+                    if (cmd.Equals("/exit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        StopServer();
+                        break;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(command)) continue;
+
+                    byte[] data = Encoding.UTF8.GetBytes(command);
+
+                    List<TcpClient> snapshot;
+                    lock (_clients) snapshot = _clients.ToList();
+
+                    var command_tasks = new List<Task>();
+                    foreach (var c in snapshot)
+                    {
+                        command_tasks.Add(SendAsync(c, data));
+                    }
+                    await Task.WhenAll(command_tasks);
+
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+
+            }
+        }
     }
 }
