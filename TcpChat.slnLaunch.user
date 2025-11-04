@@ -3,12 +3,12 @@
     "Name": "TcpChat",
     "Projects": [
       {
-        "Path": "TcpClient\\TcpClient.csproj",
+        "Path": "TcpClient\\Client.csproj",
         "Action": "StartWithoutDebugging",
         "DebugTarget": "TcpClient"
       },
       {
-        "Path": "TcpServer\\TcpServer.csproj",
+        "Path": "TcpServer\\Server.csproj",
         "Action": "StartWithoutDebugging",
         "DebugTarget": "TcpServer"
       }

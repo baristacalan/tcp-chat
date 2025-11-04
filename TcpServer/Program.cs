@@ -1,28 +1,27 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
-using System.Text.Encodings;
 using System.Text;
-namespace TcpServer
+
+namespace Server
 {
     internal class Program
     {
-        const int PORT = 4040;
-        static readonly IPAddress ipAddress = IPAddress.Any;
-        static readonly TcpListener listener = new(ipAddress, PORT);
+        static readonly int PORT = 4040;
+        static readonly IPAddress _ipAddress = IPAddress.Any;
+        static readonly TcpListener _listener = new(_ipAddress, PORT);
         
         static async Task Main(string[] args)
         {
 
             try
             {
-                listener.Start();
-                Console.WriteLine($"Server listening on {ipAddress}:{PORT}");
+                _listener.Start();
+                Console.WriteLine($"Server listening on {_ipAddress}:{PORT}");
 
                 while (true)
                 {
                     Console.WriteLine("Waiting for new connections...");
-                    var client = await listener.AcceptTcpClientAsync();
+                    var client = await _listener.AcceptTcpClientAsync();
                     Console.WriteLine($"Connection Accepted: {client.Client.RemoteEndPoint}");
                     
 
@@ -37,7 +36,7 @@ namespace TcpServer
             }
             finally 
             { 
-                listener.Stop();
+                _listener.Stop();
             
             }
 
@@ -45,7 +44,6 @@ namespace TcpServer
 
         private static async Task HandleClientAsync(TcpClient? client)
         {
-            if (client == null) return;
 
             await using NetworkStream stream = client!.GetStream();
             byte[] buffer = new byte[4096];
@@ -55,13 +53,14 @@ namespace TcpServer
             {
                 while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
                 {
-                    Console.WriteLine($"[{client.Client.RemoteEndPoint}] -> {bytesRead} bytes sent.");
+                    string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    
+                    Console.WriteLine($"{bytesRead} bytes recieved from [{client.Client.RemoteEndPoint}]: {text}");
 
-                    string text = Encoding.UTF8.GetString(buffer);
 
                     await stream.WriteAsync(buffer, 0, bytesRead);
-                    Console.WriteLine(text);
-                    Console.WriteLine($"[{client.Client.RemoteEndPoint}] <- {bytesRead} bytes recieved");
+                    Console.WriteLine($"{bytesRead} bytes sent back to [{client.Client.RemoteEndPoint}]: {text}");
+
                 }
             }
             catch (IOException ioEx)
