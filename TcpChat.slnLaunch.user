@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "TcpChat",
+    "Projects": [
+      {
+        "Path": "TcpClient\\TcpClient.csproj",
+        "Action": "StartWithoutDebugging",
+        "DebugTarget": "TcpClient"
+      },
+      {
+        "Path": "TcpServer\\TcpServer.csproj",
+        "Action": "StartWithoutDebugging",
+        "DebugTarget": "TcpServer"
+      }
+    ]
+  }
+]
