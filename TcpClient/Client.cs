@@ -15,6 +15,9 @@ namespace TcpChat
 
         static IPAddress? _address;
 
+        static string? _name;
+        
+
         //private static string? userName;
 
         static async Task Main(string[] args)
@@ -34,6 +37,9 @@ namespace TcpChat
             {
                 _port = port;
             }
+
+            Console.Write("Enter name: ");
+            _name = Console.ReadLine() ?? "";
             
             //Console.Write("User Name: ");
 
@@ -80,9 +86,9 @@ namespace TcpChat
                 Console.Write("> ");
                 string message = await Console.In.ReadLineAsync() ?? "";
 
-                //string fullMessage = $"[{userName}]: {message}";
+                string fullMessage = $"[{_name}]: {message}";
 
-                var data = Encoding.UTF8.GetBytes(message);
+                var data = Encoding.UTF8.GetBytes(fullMessage);
 
                 await stream.WriteAsync(data);
 

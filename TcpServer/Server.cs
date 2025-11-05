@@ -26,7 +26,7 @@ namespace TcpChat
                 while (true)
                 {
                     if (!isRunning) break;
-                    var client = await listener.AcceptTcpClientAsync(); //Main thread waits.
+                    var client = await listener.AcceptTcpClientAsync(); //Main thread.
                     lock(_clients) _clients.Add(client);
                     client.Client.NoDelay = true;
                     Console.WriteLine($"Connection Accepted: {client.Client.RemoteEndPoint}");
