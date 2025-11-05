@@ -24,17 +24,17 @@ namespace Server
                 isRunning = true;
                 Console.WriteLine($"Server listening on {_ipAddress}:{_port}");
 
-                _= Task.Run(ServerCommandLoop);
+                _ = Task.Run(ServerCommandLoop); //Server commands thread
                 while (true)
                 {
                     if (!isRunning) break;
-                    var client = await listener.AcceptTcpClientAsync();
+                    var client = await listener.AcceptTcpClientAsync(); //Main thread waits.
                     lock(_clients) _clients.Add(client);
                     client.Client.NoDelay = true;
                     Console.WriteLine($"Connection Accepted: {client.Client.RemoteEndPoint}");
                     
 
-                    _ =Task.Run(() => HandleClientAsync(client));
+                    _ =Task.Run(() => HandleClientAsync(client)); //New thread for the client.
 
                 }
             }

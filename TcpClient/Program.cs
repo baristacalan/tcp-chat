@@ -99,7 +99,7 @@ namespace Client
 
                 var server_response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-                await Console.Out.WriteLineAsync($"{server_response}");
+                await Console.Out.WriteLineAsync($"[{_client!.Client.RemoteEndPoint}] {server_response}");
 
             }
         }
