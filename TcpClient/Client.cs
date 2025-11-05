@@ -60,7 +60,7 @@ namespace TcpChat
                     var readTask = Task.Run(() => ReadMessageAsync(stream)); //Read thread
 
 
-                    await Task.WhenAny(writeTask, readTask);
+                    await Task.WhenAny(writeTask, readTask); //Main Thread
 
                 }
                 catch(Exception ex)
