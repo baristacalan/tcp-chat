@@ -62,7 +62,7 @@ namespace Server
             {
                 while (true)
                 {
-                    bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, CancellationToken.None);
+                    bytesRead = await stream.ReadAsync(buffer, CancellationToken.None);
 
                     string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
@@ -74,7 +74,7 @@ namespace Server
 
                     //Console.WriteLine(userName);
 
-                    Console.WriteLine($"{text}");
+                    Console.WriteLine($"[{client.Client.RemoteEndPoint}] {text}");
 
                     await BroadcastAsync(buffer.AsSpan(0, bytesRead).ToArray(), client);
 
@@ -110,11 +110,10 @@ namespace Server
         }
         private static async Task SendAsync(TcpClient client, byte[] data, CancellationToken ct=default)
         {
-
             try
             {
                 if (!client.Connected) return;
-                await client.GetStream().WriteAsync(data, 0, data.Length);
+                await client.GetStream().WriteAsync(data, ct);
             }
             catch(Exception ex)
             {
@@ -135,7 +134,7 @@ namespace Server
                 try
                 {
                     if (!c.Connected) return;
-                    await c.GetStream().WriteAsync(data, 0, data.Length, ct);
+                    await c.GetStream().WriteAsync(data, ct);
                 }
                 catch
                 {
@@ -149,7 +148,6 @@ namespace Server
 
         private static async Task ServerCommandLoop()
         {
-            byte[] buffer = new byte[4096];
             while (true)
             {
                 try
@@ -167,7 +165,9 @@ namespace Server
 
                     if (string.IsNullOrWhiteSpace(command)) continue;
 
-                    byte[] data = Encoding.UTF8.GetBytes(command);
+                    string displayedCommand = $"[Server] {command}";
+
+                    byte[] data = Encoding.UTF8.GetBytes(displayedCommand);
 
                     List<TcpClient> snapshot;
                     lock (_clients) snapshot = _clients.ToList();

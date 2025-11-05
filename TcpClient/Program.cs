@@ -14,7 +14,7 @@ namespace Client
 
         static IPAddress? _address;
 
-        private static string? userName;
+        //private static string? userName;
 
         static async Task Main(string[] args)
         {
@@ -32,9 +32,10 @@ namespace Client
             {
                 _port = port;
             }
-            Console.Write("User Name: ");
+            
+            //Console.Write("User Name: ");
 
-            userName = Console.ReadLine() ?? "";
+            //userName = Console.ReadLine() ?? "";
 
 
             //_address = IPAddress.Parse("127.0.0.1");
@@ -52,9 +53,9 @@ namespace Client
 
                     NetworkStream stream = _client.GetStream();
 
-                    var writeTask = Task.Run(() => WriteMessageAsync(stream));
+                    var writeTask = Task.Run(() => WriteMessageAsync(stream)); //Write thread
 
-                    var readTask = Task.Run(() => ReadMessageAsync(stream));
+                    var readTask = Task.Run(() => ReadMessageAsync(stream)); //Read thread
 
 
                     await Task.WhenAny(writeTask, readTask);
@@ -77,11 +78,11 @@ namespace Client
                 Console.Write("> ");
                 string message = await Console.In.ReadLineAsync() ?? "";
 
-                string fullMessage = $"[{userName}]: {message}";
+                //string fullMessage = $"[{userName}]: {message}";
 
-                var data = Encoding.UTF8.GetBytes(fullMessage, 0, fullMessage.Length);
+                var data = Encoding.UTF8.GetBytes(message);
 
-                await stream.WriteAsync(data, 0, data.Length);
+                await stream.WriteAsync(data);
 
             }
         }
@@ -92,13 +93,13 @@ namespace Client
             while(true)
             {
 
-                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                int bytesRead = await stream.ReadAsync(buffer);
 
-                if (bytesRead == 0) break;
+                if (bytesRead == 0) continue;
 
                 var server_response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-                await Console.Out.WriteLineAsync($"[Server] {Encoding.UTF8.GetString(buffer, 0, bytesRead)}");
+                await Console.Out.WriteLineAsync($"{server_response}");
 
             }
         }
