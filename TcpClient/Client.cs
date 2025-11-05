@@ -3,10 +3,11 @@ using System.Net.Sockets;
 using System.Text;
 
 
-namespace Client
+namespace TcpChat
 {
-    internal class Program
+    internal class Client
     {
+
 
         static TcpClient? _client;
 
@@ -18,6 +19,7 @@ namespace Client
 
         static async Task Main(string[] args)
         {
+
             Console.Write("Enter IP: ");
 
             string ip = Console.ReadLine() ?? "127.0.0.1";
@@ -90,16 +92,20 @@ namespace Client
         static async Task ReadMessageAsync(NetworkStream stream)
         {
             byte[] buffer = new byte[4096];
-            while(true)
+            while (true)
             {
 
                 int bytesRead = await stream.ReadAsync(buffer);
 
-                if (bytesRead == 0) continue;
+                if (bytesRead == 0) break;
 
                 var server_response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-                await Console.Out.WriteLineAsync($"[{_client!.Client.RemoteEndPoint}] {server_response}");
+                //await Console.Out.WriteLineAsync(server_response);
+
+                Console.WriteLine($"\r {new string(' ', Console.WindowWidth - 1)} \r");
+                Console.WriteLine(server_response);
+                Console.Write("> ");
 
             }
         }

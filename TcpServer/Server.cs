@@ -2,11 +2,9 @@
 using System.Net.Sockets;
 using System.Text;
 
-
-
-namespace Server
+namespace TcpChat
 {
-    internal class Program
+    internal class Server
     {
         static readonly int _port = 4040;
         static readonly IPAddress _ipAddress = IPAddress.Any;
@@ -54,8 +52,14 @@ namespace Server
         private static async Task HandleClientAsync(TcpClient? client)
         {
 
-            await using NetworkStream stream = client!.GetStream();
+            using NetworkStream stream = client!.GetStream();
             byte[] buffer = new byte[4096];
+
+            //using var reader = new StreamReader(client!.GetStream(), Encoding.UTF8, leaveOpen: true);
+            //using var writer = new StreamWriter(client!.GetStream(), Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
+
+
+
             int bytesRead;
 
             try
@@ -74,9 +78,17 @@ namespace Server
 
                     //Console.WriteLine(userName);
 
-                    Console.WriteLine($"[{client.Client.RemoteEndPoint}] {text}");
+                    string clientEndPointStr = client?.Client.RemoteEndPoint?.ToString()!;
 
-                    await BroadcastAsync(buffer.AsSpan(0, bytesRead).ToArray(), client);
+                    var message = $"[{clientEndPointStr}] {text}";
+                    
+                    
+                    Console.WriteLine($"{message}");
+
+
+                    var broadCastData = Encoding.UTF8.GetBytes(message); 
+
+                    await BroadcastAsync(broadCastData, client);
 
                 }
             }
@@ -128,20 +140,16 @@ namespace Server
         {
             List<TcpClient> snapshot;
             lock (_clients) snapshot = _clients.ToList();
+            var tasks = new List<Task>();
 
-            var tasks = snapshot.Where(c => c != exclude).Select(async c =>
+            snapshot.Remove(exclude!);
+
+            foreach (var c in snapshot)
             {
-                try
-                {
-                    if (!c.Connected) return;
-                    await c.GetStream().WriteAsync(data, ct);
-                }
-                catch
-                {
-                    lock (_clients) _clients.Remove(c);
-                }
-            });
 
+                tasks.Add(SendAsync(c, data, ct));
+
+            }
             await Task.WhenAll(tasks);
         }
 
