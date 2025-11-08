@@ -23,31 +23,23 @@ namespace TcpChat
         static async Task Main(string[] args)
         {
 
-            Console.Write("Enter IP: ");
 
-            string ip = Console.ReadLine() ?? "127.0.0.1";
-
-            if (IPAddress.TryParse(ip, out IPAddress? address))
+            if (args.Length == 3)
             {
-                _address = address;
+
+                if (IPAddress.TryParse(args[0], out IPAddress? address))
+                {
+                    _address = address;
+                }
+
+                if (int.TryParse(args[1], out int port))
+                {
+                    _port = port;
+                }
+
+                _name = args[2];
+
             }
-
-            Console.Write("Enter port: ");
-            if (int.TryParse(Console.ReadLine(), out int port))
-            {
-                _port = port;
-            }
-
-            Console.Write("Enter name: ");
-            _name = Console.ReadLine() ?? "";
-            
-            //Console.Write("User Name: ");
-
-            //userName = Console.ReadLine() ?? "";
-
-
-            //_address = IPAddress.Parse("127.0.0.1");
-            //_port = 4040;
 
             if (_address != null && _port.HasValue)
             {
