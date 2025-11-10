@@ -6,52 +6,48 @@ namespace TcpChat
 {
     internal class Server
     {
-        static readonly int _port = 4040;
-        static readonly IPAddress _ipAddress = IPAddress.Any;
-        static readonly List<TcpClient> _clients = [];
+        private readonly int _port;
+        private readonly IPAddress? _ipAddress;
+        private readonly List<TcpClient> _clients = [];
+        private TcpListener? _listener;
 
-        static bool isRunning = false;
-        
-        static readonly TcpListener listener = new(_ipAddress, _port);
-        static async Task Main(string[] args)
+        public bool IsRunning { get; private set; }
+
+        public Server(string ipAddress, int port)
         {
+            _= IPAddress.TryParse(ipAddress, out _ipAddress);
+            _port = port;
 
-            try
-            {
-                
-                listener.Start();
-                isRunning = true;
-                Console.WriteLine($"Server listening on {_ipAddress}:{_port}");
-
-                _ = Task.Run(ServerCommandLoop); //Server commands thread
-                while (true)
-                {
-                    if (!isRunning) break;
-                    var client = await listener.AcceptTcpClientAsync(); //Main thread.
-                    lock(_clients) _clients.Add(client);
-                    client.Client.NoDelay = true;
-                    Console.WriteLine($"Connection Accepted: {client.Client.RemoteEndPoint}");
-                    
-
-                    _ =Task.Run(() => HandleClientAsync(client)); //New thread for the client.
-
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            finally 
-            { 
-                //isRunning = false;
-                StopServer();
-                //listener.Stop();
-            
-            }
+            ArgumentNullException.ThrowIfNullOrWhiteSpace(ipAddress);
+            ArgumentNullException.ThrowIfNull(port);
 
         }
 
-        private static async Task HandleClientAsync(TcpClient? client)
+        public void Start()
+        {
+            try
+            {
+                _listener = new TcpListener(_ipAddress!, _port);
+                _listener.Start();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Server failed to start: {ex.Message}");
+            }
+            IsRunning = true;
+
+        }
+
+        public TcpClient AcceptClientAsync()
+        {
+            TcpClient newClient = _listener!.AcceptTcpClient();
+            newClient.Client.NoDelay = true;
+            lock (_clients) _clients.Add(newClient);
+            return newClient;
+
+        }
+
+        public async Task HandleClientAsync(TcpClient? client)
         {
 
             using NetworkStream stream = client!.GetStream();
@@ -105,19 +101,23 @@ namespace TcpChat
             }
         }
 
-        private static void StopServer()
+        public void Stop()
         {
-            isRunning = false;
+            IsRunning = false;
             foreach (var c in _clients)
             {
                 c.Close();
             }
             _clients.Clear();
 
-            listener.Stop();
+            _listener!.Stop();
 
+            _listener.Dispose();
         }
-        private static async Task SendAsync(TcpClient client, byte[] data, CancellationToken ct=default)
+        
+
+        //Helper function
+        private async Task SendAsync(TcpClient client, byte[] data, CancellationToken ct=default)
         {
             try
             {
@@ -132,8 +132,7 @@ namespace TcpChat
 
         }
 
-
-        private static async Task BroadcastAsync(byte[] data, TcpClient? exclude = null, CancellationToken ct = default)
+       public async Task BroadcastAsync(byte[] data, TcpClient? exclude = null, CancellationToken ct = default)
         {
             List<TcpClient> snapshot;
             lock (_clients) snapshot = _clients.ToList();
@@ -151,7 +150,7 @@ namespace TcpChat
         }
 
 
-        private static async Task ServerCommandLoop()
+        public async Task ServerCommandLoop()
         {
             while (true)
             {
@@ -164,7 +163,7 @@ namespace TcpChat
 
                     if (cmd.Equals("/exit", StringComparison.OrdinalIgnoreCase))
                     {
-                        StopServer();
+                        Stop();
                         break;
                     }
 
@@ -174,15 +173,16 @@ namespace TcpChat
 
                     byte[] data = Encoding.UTF8.GetBytes(displayedCommand);
 
-                    List<TcpClient> snapshot;
-                    lock (_clients) snapshot = _clients.ToList();
+                    //List<TcpClient> snapshot;
+                    //lock (_clients) snapshot = _clients.ToList();
+                    //var command_tasks = new List<Task>();
+                    //foreach (var c in snapshot)
+                    //{
+                    //    command_tasks.Add(SendAsync(c, data));
+                    //}
+                    //await Task.WhenAll(command_tasks);
 
-                    var command_tasks = new List<Task>();
-                    foreach (var c in snapshot)
-                    {
-                        command_tasks.Add(SendAsync(c, data));
-                    }
-                    await Task.WhenAll(command_tasks);
+                    await BroadcastAsync(data, null);
 
                 }
                 catch(Exception ex)
