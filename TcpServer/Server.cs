@@ -18,6 +18,7 @@ namespace TcpChat
 
             try
             {
+                
                 listener.Start();
                 isRunning = true;
                 Console.WriteLine($"Server listening on {_ipAddress}:{_port}");
@@ -42,8 +43,9 @@ namespace TcpChat
             }
             finally 
             { 
-                isRunning = false;
-                listener.Stop();
+                //isRunning = false;
+                StopServer();
+                //listener.Stop();
             
             }
 
@@ -54,11 +56,6 @@ namespace TcpChat
 
             using NetworkStream stream = client!.GetStream();
             byte[] buffer = new byte[4096];
-
-            //using var reader = new StreamReader(client!.GetStream(), Encoding.UTF8, leaveOpen: true);
-            //using var writer = new StreamWriter(client!.GetStream(), Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
-
-
 
             int bytesRead;
 
