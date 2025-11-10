@@ -18,10 +18,8 @@ namespace TcpChat
                 port = int.Parse(args[1]);
 
             }
-
             try
             {
-
                 server = new(ipAddress, port);
 
                 server.Start();
@@ -47,8 +45,6 @@ namespace TcpChat
             {
                 server!.Stop();
             }
-
         }
-
     }
 }

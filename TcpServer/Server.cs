@@ -67,10 +67,6 @@ namespace TcpChat
 
                     if (cmd.Equals("/exit", StringComparison.OrdinalIgnoreCase)) break;
 
-                    //string userName = text.Split(":")[0];
-
-                    //Console.WriteLine(userName);
-
                     string clientEndPointStr = client?.Client.RemoteEndPoint?.ToString()!;
 
                     var message = $"[{clientEndPointStr}] {text}";
@@ -115,7 +111,6 @@ namespace TcpChat
             _listener.Dispose();
         }
         
-
         //Helper function
         private async Task SendAsync(TcpClient client, byte[] data, CancellationToken ct=default)
         {
@@ -148,15 +143,12 @@ namespace TcpChat
             }
             await Task.WhenAll(tasks);
         }
-
-
         public async Task ServerCommandLoop()
         {
             while (true)
             {
                 try
                 {
-
                     Console.Write("> ");
                     string command = await Console.In.ReadLineAsync() ?? "";
                     string cmd = command.Trim();
@@ -173,15 +165,6 @@ namespace TcpChat
 
                     byte[] data = Encoding.UTF8.GetBytes(displayedCommand);
 
-                    //List<TcpClient> snapshot;
-                    //lock (_clients) snapshot = _clients.ToList();
-                    //var command_tasks = new List<Task>();
-                    //foreach (var c in snapshot)
-                    //{
-                    //    command_tasks.Add(SendAsync(c, data));
-                    //}
-                    //await Task.WhenAll(command_tasks);
-
                     await BroadcastAsync(data, null);
 
                 }
@@ -189,7 +172,6 @@ namespace TcpChat
                 {
                     Console.WriteLine(ex.Message);
                 }
-
             }
         }
     }
