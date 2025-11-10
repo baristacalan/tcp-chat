@@ -8,98 +8,67 @@ namespace TcpChat
     internal class Client
     {
 
+        private Socket? _socket;
+        private int _port;
+        private IPAddress? _address;
+        private string? _userName;
 
-        static TcpClient? _client;
+        public bool IsConnected { get; private set; }
 
-        static int? _port;
 
-        static IPAddress? _address;
-
-        static string? _name;
-        
-
-        //private static string? userName;
-
-        static async Task Main(string[] args)
+        public Client(string ipAddress, int port, string? userName)
         {
+            if(IPAddress.TryParse(ipAddress, out IPAddress? address)) _address = address;
+            _port = port;
 
+            if(string.IsNullOrWhiteSpace(userName)) _userName = "Annonymous Client";
 
-            if (args.Length == 3)
-            {
+            _userName = userName!;
 
-                if (IPAddress.TryParse(args[0], out IPAddress? address))
-                {
-                    _address = address;
-                }
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-                if (int.TryParse(args[1], out int port))
-                {
-                    _port = port;
-                }
+            ArgumentNullException.ThrowIfNull(nameof(ipAddress));
+            ArgumentNullException.ThrowIfNull(nameof(port));
 
-                _name = args[2];
-
-            }
-
-            if (_address != null && _port.HasValue)
-            {
-                try
-                {
-                    _client = new TcpClient();
-
-                    await _client.ConnectAsync(new IPEndPoint(_address, _port.Value));
-
-                    _client.NoDelay = true;
-
-                    NetworkStream stream = _client.GetStream();
-
-                    var writeTask = Task.Run(() => WriteMessageAsync(stream)); //Write thread
-
-                    var readTask = Task.Run(() => ReadMessageAsync(stream)); //Read thread
-
-
-                    await Task.WhenAny(writeTask, readTask); //Main Thread
-
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Invalid IP address or port.");
-            }
+            IsConnected = false;
         }
-        static async Task WriteMessageAsync(NetworkStream stream)
+
+        public async Task ConnectAsync()
         {
-            while(true)
+            var endpoint = new IPEndPoint(_address!, _port);
+            await _socket!.ConnectAsync(endpoint);
+            _socket.NoDelay = true;
+            IsConnected = true;
+
+        }
+
+        public async Task WriteMessageAsync()
+        {
+            while (true)
             {
                 Console.Write("> ");
                 string message = await Console.In.ReadLineAsync() ?? "";
 
-                string fullMessage = $"[{_name}]: {message}";
+                string fullMessage = $"[{_userName}]: {message}";
 
                 var data = Encoding.UTF8.GetBytes(fullMessage);
 
-                await stream.WriteAsync(data);
+                await _socket!.SendAsync(data);
 
             }
         }
 
-        static async Task ReadMessageAsync(NetworkStream stream)
+        public async Task ReadMessageAsync()
         {
             byte[] buffer = new byte[4096];
             while (true)
             {
 
-                int bytesRead = await stream.ReadAsync(buffer);
+                int bytesRead = await _socket!.ReceiveAsync(buffer);
 
                 if (bytesRead == 0) break;
 
                 var server_response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-                //await Console.Out.WriteLineAsync(server_response);
 
                 Console.WriteLine($"\r {new string(' ', Console.WindowWidth - 1)} \r");
                 Console.WriteLine(server_response);
@@ -107,5 +76,13 @@ namespace TcpChat
 
             }
         }
+
+        public void Disconnect()
+        {
+            if(IsConnected)
+                _socket?.Dispose();
+            IsConnected = false;
+        }
+
     }
 }
