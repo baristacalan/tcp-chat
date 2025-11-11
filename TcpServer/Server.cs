@@ -61,6 +61,8 @@ namespace TcpChat
                 {
                     bytesRead = await stream.ReadAsync(buffer, CancellationToken.None);
 
+                    if (bytesRead == 0) break;
+
                     string text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
                     string cmd = text.Trim();
@@ -133,7 +135,8 @@ namespace TcpChat
             lock (_clients) snapshot = _clients.ToList();
             var tasks = new List<Task>();
 
-            snapshot.Remove(exclude!);
+            if( exclude != null )
+                snapshot.Remove(exclude!);
 
             foreach (var c in snapshot)
             {
